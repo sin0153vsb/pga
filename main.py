@@ -375,7 +375,7 @@ def inv_dual(D: Geo) -> Geo:
     return m
 def split(B: Geo) -> tuple[float, float, Geo]:
     BB = -B*B
-    if BB == 0: #TODO: comparing floats
+    if BB.almost_eq(0):
         B_ = B.reverse().undual()
         n = B_.norm()
         return 0, n, B_/n
@@ -466,8 +466,10 @@ def test() -> None:
                 assert (a + b) ^ c == (a ^ c) + (b ^ c)
                 assert (a + b) & c == (a & c) + (b & c)
 
-def coords(P: Geo) -> tuple[float, ...]:
+def coords(P: Geo) -> None | tuple[float, ...]:
     p = P.undual()
+    if p.data[1] == 0:
+        return None
     return tuple(p.data[1 << i]/p.data[1] for i in range(1, dim))
 
 O = e0.dual()
