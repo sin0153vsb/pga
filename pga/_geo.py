@@ -457,10 +457,11 @@ class GeoBase:
         for out, sign, in1, in2 in self._contraction_mul:
             result._data[out] += sign * self._data[in1] * other._data[in2]
         return result
-    def grade(self) -> int | None:
+    def grade(self) -> int | None | Literal['mixed']:
         """
-        Returns the grade of self or None if self is mixed grade
-        when self is 0 returns None
+        Returns the grade of self 
+        if self is mixed grade returns 'mixed'
+        if self is 0 returns None
 
         Grade is defined as
           (α * (a_1 ^ … ^ a_n)).grade() == n
@@ -473,7 +474,7 @@ class GeoBase:
             if result is None:
                 result = tmp
             elif result != tmp:
-                return None
+                return 'mixed'
         return result
     @classmethod
     def e(cls, *ns: int) -> Self:
@@ -550,7 +551,7 @@ def _split(B: Geo3d) -> tuple[float, float, Geo3d]:
     if BB.almost_eq(0):
         B_ = B.reverse().undual()
         n = B_.norm()
-        return 0, n, B_/n
+        return 0, n, B_/n if n != 0 else Geo3d(0)
     B_norm = _sqrt_dual(-B*B)
     B_normalized = _inv_dual(B_norm) * B
     return B_norm._data[0], B_norm._data[-1], B_normalized
@@ -559,7 +560,7 @@ def _exp_3d(B: Geo3d) -> Geo3d:
     return (math.cos(u) + math.sin(u)*B_)*(1 + v*_I_3d*B_)
 def _log_3d(m: Geo3d) -> Geo3d:
     """
-    takes a logarithm of a bivector
+    takes a logarithm of an even versor
     _exp_3d(_log_3d(m)) == m
     """
     s1 = m._data[0]
@@ -568,7 +569,7 @@ def _log_3d(m: Geo3d) -> Geo3d:
     m2._data[0] = 0
     m2._data[-1] = 0
     s2, p2, m_ = _split(m2)
-    if abs(s1 - 0) < 1e-10:
+    if not abs(s1 - 0) < 1e-10:
         u = math.atan2(s2, s1)
         v = p2/s1
     else:
@@ -612,7 +613,7 @@ def exp(m: Geo) -> Geo:
     - translation if A is ideal
     such that exp(A) leaves A invariant
     """
-    if m.grade() != 2:
+    if not m.grade() in (2, None):
         raise ValueError('exp only supports bivectors')
     if isinstance(m, Geo2d):
         return _exp_2d(m) # type: ignore # for some reason mypy thinks Geo = Geo3d, I'm not sure why. The asymmetric behaviour makes me think that it might be a bug in mypy but maybe I'm missing something
