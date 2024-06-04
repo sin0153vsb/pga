@@ -10,4 +10,5 @@ e2 = e(2)
 I = Geo2d.I
 O = Geo2d.O
 
-__all__ = ['O', 'I', 'e0', 'e1', 'e2', 'e', 'Geo2d', 'exp', 'log', 'draw', 'show']
+__all__ = ['O', 'I', 'e0', 'e1', 'e2', 'e',
+           'Geo2d', 'exp', 'log', 'draw', 'show']

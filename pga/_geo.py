@@ -1,28 +1,26 @@
 # This implementation is based on:
-# 
-# Leo Dorst & Steven De Keninck  
-# A Guided Tour to the Plane-Based Geometric Algebra PGA  
-# 2022, version 2.0  
-# Available at http://www.geometricalgebra.net  
+#
+# Leo Dorst & Steven De Keninck
+# A Guided Tour to the Plane-Based Geometric Algebra PGA
+# 2022, version 2.0
+# Available at http://www.geometricalgebra.net
 # and http://bivector.net/PGA4CS.html.
-# 
-# Course notes Geometric Algebra for Computer Graphics  
-# SIGGRAPH 2019  
+#
+# Course notes Geometric Algebra for Computer Graphics
+# SIGGRAPH 2019
 # Charles G. Gunn, Ph. D.
-# 
-# Geometric Algebra for Computer Science  
-# An Object Oriented Approach to Geometry  
+#
+# Geometric Algebra for Computer Science
+# An Object Oriented Approach to Geometry
 # Leo Dorst, Daniel Fontijne, Stephen Mann
 
 import math
 import numpy as np
 from numpy.typing import NDArray
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection # type: ignore
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection  # type: ignore
 import matplotlib.colors as colors
 from typing import Literal, cast, Union, Generic, TypeVar, Self, ClassVar, overload, Optional, Final
-
-
 
 
 # index into multivector's data
@@ -36,11 +34,14 @@ _Sign = Literal[-1, 0, 1]
 _Squares = tuple[_Sign, ...]
 
 # basis multivectors as a tuple
+
+
 def _basis(n: int) -> tuple[_TBasis, ...]:
-    r : tuple[_TBasis, ...] = ((),)
+    r: tuple[_TBasis, ...] = ((),)
     for e in range(n):
         r += tuple(tail + (e,) for tail in r)
     return r
+
 
 def _simplify_tbasis(ns: _TBasis, *, squares: _Squares) -> tuple[_Sign, _TBasis]:
     """
@@ -62,7 +63,7 @@ def _simplify_tbasis(ns: _TBasis, *, squares: _Squares) -> tuple[_Sign, _TBasis]
                 sign = cast(_Sign, sign * squares[e])
                 r.remove(e)
                 break
-            elif r[i] > e: 
+            elif r[i] > e:
                 r.insert(i, e)
                 break
             else:
@@ -74,7 +75,7 @@ def _simplify_tbasis(ns: _TBasis, *, squares: _Squares) -> tuple[_Sign, _TBasis]
 
 # tuple to index
 def _to_ix(ns: _TBasis, *, squares: _Squares) -> tuple[_Sign, _Index]:
-    sign, ns = _simplify_tbasis(ns, squares = squares)
+    sign, ns = _simplify_tbasis(ns, squares=squares)
     return sign, sum(1 << n for n in ns)
 
 
@@ -82,14 +83,16 @@ def _to_ix(ns: _TBasis, *, squares: _Squares) -> tuple[_Sign, _Index]:
 def _mul_table(squares: tuple[_Sign, ...]) -> list[tuple[_Index, Literal[1, -1], _Index, _Index]]:
     result = []
     for a in _basis(len(squares)):
-        _, a_ix = _to_ix(a, squares = squares)
+        _, a_ix = _to_ix(a, squares=squares)
         for b in _basis(len(squares)):
-            _, b_ix = _to_ix(b, squares = squares)
-            sign, ab_ix = _to_ix(a + b, squares = squares)
+            _, b_ix = _to_ix(b, squares=squares)
+            sign, ab_ix = _to_ix(a + b, squares=squares)
             if sign != 0:
                 result.append((ab_ix, sign, a_ix, b_ix))
     return result
 # performs | on TBasis
+
+
 def _contraction_mult(a: _TBasis, b: _TBasis, squares: tuple[_Sign, ...]) -> tuple[_Sign, _TBasis]:
     sign: _Sign = 1
     r = list(b)
@@ -108,20 +111,23 @@ def _contraction_mult(a: _TBasis, b: _TBasis, squares: tuple[_Sign, ...]) -> tup
             sign = 0
     return sign, tuple(r)
 # precompute multiplication table for |
+
+
 def _contraction_table(squares: tuple[_Sign, ...]) -> list[tuple[_Index, Literal[1, -1], _Index, _Index]]:
     result = []
     for a in _basis(len(squares)):
-        _, a_ix = _to_ix(a, squares = squares)
+        _, a_ix = _to_ix(a, squares=squares)
         for b in _basis(len(squares)):
-            _, b_ix = _to_ix(b, squares = squares)
-            sign, r = _contraction_mult(a, b, squares = squares)
-            _, r2 = _to_ix(r, squares = squares)
+            _, b_ix = _to_ix(b, squares=squares)
+            sign, r = _contraction_mult(a, b, squares=squares)
+            _, r2 = _to_ix(r, squares=squares)
             if sign != 0:
                 result.append((r2, sign, a_ix, b_ix))
     return result
+
+
 _0: _Sign = 0
 _1: _Sign = 1
-
 
 
 class GeoBase:
@@ -137,7 +143,7 @@ class GeoBase:
     - A & B -> join
     - A | B -> left contraction
     """
-    
+
     # I precompite all the operations because _simplify_tbasus() is slow
     _dim: ClassVar[int]
     _basis_count: ClassVar[int]
@@ -153,29 +159,30 @@ class GeoBase:
     O = e12…n = e0.dual()
     where n is the number of dimensions
     """
-    O : ClassVar[Self]
+    O: ClassVar[Self]
     """
     The pseudoscalar
     I = e01…n
     where n is the number of dimensions
     """
-    I : ClassVar[Self]
+    I: ClassVar[Self]
     """
     The basis vECTors that span the space
     """
-    BASIS_VECTORS : ClassVar[tuple[Self, ...]]
+    BASIS_VECTORS: ClassVar[tuple[Self, ...]]
     """
     The basis multivectors that span the space
     """
-    BASIS_MULTIVECTORS : ClassVar[tuple[Self, ...]]
+    BASIS_MULTIVECTORS: ClassVar[tuple[Self, ...]]
+
     def __init_subclass__(cls, *, dimension: Literal[2, 3]) -> None:
-        '''
+        """
         to create a subclass for a particular dimension use:
           class Geo3d(GeoBase, dimension = 3): pass
         unfortunately exp(), log(), and draw() are
         not supported for dimensions other than 2 and 3
         this is a limitation of this library, not PGA itself
-        '''
+        """
         dim = dimension + 1
         basis_count = 2**dim
         squares = (_0,) + (_1,)*(dim - 1)
@@ -183,7 +190,7 @@ class GeoBase:
         cls._basis_count = basis_count
         cls._squares = squares
         cls._geometric_mul = _mul_table(squares)
-        cls._wedge_mul = _mul_table(squares = (_0,)*dim)
+        cls._wedge_mul = _mul_table(squares=(_0,)*dim)
         cls._contraction_mul = _contraction_table(squares)
 
         reverse = np.ones(basis_count)
@@ -195,16 +202,16 @@ class GeoBase:
         cls._reverse = reverse
 
         I_tuple = tuple(range(dim))
-        
+
         dual = np.ones(basis_count)
         for i, e in enumerate(_basis(dim)):
-            sign, _ = _to_ix(e[::-1] + I_tuple, squares = (_1,)*dim)
+            sign, _ = _to_ix(e[::-1] + I_tuple, squares=(_1,)*dim)
             dual[i] = sign
         cls._dual = dual
 
         undual = np.ones(basis_count)
         for i, e in enumerate(_basis(dim)):
-            sign, _ = _to_ix(I_tuple + e[::-1], squares = (_1,)*dim)
+            sign, _ = _to_ix(I_tuple + e[::-1], squares=(_1,)*dim)
             undual[i] = sign
             pass
         cls._undual = undual
@@ -213,6 +220,7 @@ class GeoBase:
         cls.O = cls.e(0).dual()
         cls.BASIS_VECTORS = tuple(cls.e(i) for i in range(cls._dim))
         cls.BASIS_MULTIVECTORS = tuple(cls.e(*b) for b in _basis(cls._dim))
+
     def __init__(self, scalar: float = 0, *, data: NDArray[np.float64] | None = None) -> None:
         if data is None:
             self._data = np.zeros(type(self)._basis_count)
@@ -220,11 +228,15 @@ class GeoBase:
         else:
             assert scalar == 0
             self._data = data.copy()
+
     def __add__(self, other: float | Self) -> Self:
-        "addition is component-wise"
+        """
+        addition is component-wise
+        """
         if isinstance(other, float | int):
             other = type(self)(other)
-        return type(self)(data = self._data + other._data)
+        return type(self)(data=self._data + other._data)
+
     def __mul__(self, other: float | Self) -> Self:
         """
         The geometric product
@@ -240,6 +252,7 @@ class GeoBase:
         for out, sign, in1, in2 in self._geometric_mul:
             result._data[out] += sign * self._data[in1] * other._data[in2]
         return result
+
     def __xor__(self, other: float | Self) -> Self:
         """
         The outer product/wedge product
@@ -256,6 +269,7 @@ class GeoBase:
         for out, sign, in1, in2 in self._wedge_mul:
             result._data[out] += sign * self._data[in1] * other._data[in2]
         return result
+
     def __repr__(self) -> str:
         """
         examples:
@@ -269,19 +283,29 @@ class GeoBase:
             if n != 0:
                 r.append(str(n) + 'e' + ''.join(str(m) for m in e))
         return ' + '.join(r) if len(r) != 0 else '0'
+
     def __radd__(self, other: float | Self) -> Self:
-        "addition is component-wise"
+        """
+        addition is component-wise
+        """
         return self + other
+
     def __sub__(self, other: float | Self) -> Self:
-        "subtraction is component-wise"
+        """
+        subtraction is component-wise
+        """
         if isinstance(other, float | int):
             other = type(self)(other)
-        return type(self)(data = self._data - other._data)
+        return type(self)(data=self._data - other._data)
+
     def __rsub__(self, other: float | Self) -> Self:
-        "subtraction is component-wise"
+        """
+        subtraction is component-wise
+        """
         if isinstance(other, float | int):
             other = type(self)(other)
-        return type(self)(data = other._data - self._data)
+        return type(self)(data=other._data - self._data)
+
     def __rmul__(self, other: float | Self) -> Self:
         """
         The geometric product
@@ -294,6 +318,7 @@ class GeoBase:
         if isinstance(other, float | int):
             other = type(self)(other)
         return other * self
+
     def __rxor__(self, other: float | Self) -> Self:
         """
         The outer product/wedge product
@@ -307,6 +332,7 @@ class GeoBase:
         if isinstance(other, float | int):
             other = type(self)(other)
         return other ^ self
+
     def reverse(self) -> Self:
         """
         The reverse of a versor
@@ -317,7 +343,8 @@ class GeoBase:
           A.reverse() = aN * … * a1
         extended linearly to nonversors
         """
-        return type(self)(data = self._reverse * self._data)
+        return type(self)(data=self._reverse * self._data)
+
     def sqr_norm(self) -> float:
         """
         Returns self * self.reverse()
@@ -327,12 +354,14 @@ class GeoBase:
         if not np.allclose(n._data[1:], 0):
             raise ValueError('cannot take a norm of a non-versor')
         return abs(n._data[0])
+
     def norm(self) -> float:
         """
         Returns sqrt(self * self.reverse())
         Only works on versors
         """
         return math.sqrt(self.sqr_norm())
+
     def normalize(self) -> Self:
         """
         Returns self/self.norm()
@@ -341,7 +370,8 @@ class GeoBase:
         n = self.norm()
         if n == 0:
             raise ValueError('Cannot normalize an ideal element')
-        return self/n 
+        return self/n
+
     def inv(self) -> Self:
         """
         The inverse element of a versor
@@ -357,6 +387,7 @@ class GeoBase:
         if n._data[0] == 0:
             raise ValueError('cannot take a norm of ideal element')
         return rev * (1/n._data[0])
+
     def __truediv__(self, other: float | Self) -> Self:
         """
         Right division:
@@ -367,6 +398,7 @@ class GeoBase:
         if isinstance(other, float | int):
             other = type(self)(other)
         return self * other.inv()
+
     def __rtruediv__(self, other: float | Self) -> Self:
         """
         Right division:
@@ -377,22 +409,32 @@ class GeoBase:
         if isinstance(other, float | int):
             other = type(self)(other)
         return other * self.inv()
+
     def __eq__(self, other: object) -> bool:
-        "elementwise equality"
+        """
+        elementwise equality
+        """
         if isinstance(other, float | int):
             other = type(self)(other)
         if isinstance(other, type(self)):
             return (self._data == other._data).all()
         else:
             return NotImplemented
+
     def almost_eq(self, other: float | Self) -> bool:
-        "== with epsilon for comparing floats"
+        """
+        == with epsilon for comparing floats
+        """
         if isinstance(other, float | int):
             other = type(self)(other)
         return np.allclose(self._data, other._data)
+
     def __neg__(self) -> Self:
-        "negation is component-wise"
-        return type(self)(data = -self._data)
+        """
+        negation is component-wise
+        """
+        return type(self)(data=-self._data)
+
     def dual(self) -> Self:
         """
         the inverse of undual()
@@ -403,7 +445,8 @@ class GeoBase:
           α = A.dual() * A.dual().reverse()
         depending on which of them isn't zero
         """
-        return type(self)(data = (self._dual * self._data)[::-1])
+        return type(self)(data=(self._dual * self._data)[::-1])
+
     def undual(self) -> Self:
         """
         the inverse of dual()
@@ -414,7 +457,8 @@ class GeoBase:
           α = A.undual() * A.undual().reverse()
         depending on which one isn't zero
         """
-        return type(self)(data = (self._undual * self._data)[::-1])
+        return type(self)(data=(self._undual * self._data)[::-1])
+
     def __and__(self, other: float | Self) -> Self:
         """
         The join operator
@@ -429,6 +473,7 @@ class GeoBase:
         if isinstance(other, float | int):
             other = type(self)(other)
         return (self.dual() ^ other.dual()).undual()
+
     def __or__(self, other: float | Self) -> Self:
         """
         The left contraction operator
@@ -457,6 +502,7 @@ class GeoBase:
         for out, sign, in1, in2 in self._contraction_mul:
             result._data[out] += sign * self._data[in1] * other._data[in2]
         return result
+
     def grade(self) -> int | None | Literal['mixed']:
         """
         Returns the grade of self 
@@ -469,13 +515,15 @@ class GeoBase:
         """
         result = None
         for i in range(self._basis_count):
-            if abs(self._data[i] - 0) < 1e-10: continue
+            if abs(self._data[i] - 0) < 1e-10:
+                continue
             tmp = i.bit_count()
             if result is None:
                 result = tmp
             elif result != tmp:
                 return 'mixed'
         return result
+
     @classmethod
     def e(cls, *ns: int) -> Self:
         """
@@ -495,12 +543,12 @@ class GeoBase:
         but for more complex blades you can use this function (or just multiply them manually)
         """
         r = cls()
-        sign, ix = _to_ix(ns, squares = cls._squares)
+        sign, ix = _to_ix(ns, squares=cls._squares)
         r._data[ix] = sign
         return r
 
 
-class Geo3d(GeoBase, dimension = 3):
+class Geo3d(GeoBase, dimension=3):
     """
     A number from 3D PGA
 
@@ -516,7 +564,9 @@ class Geo3d(GeoBase, dimension = 3):
     - A | B -> left contraction
     """
     pass
-class Geo2d(GeoBase, dimension = 2):
+
+
+class Geo2d(GeoBase, dimension=2):
     """
     A number from 2D PGA
 
@@ -531,6 +581,8 @@ class Geo2d(GeoBase, dimension = 2):
     - A | B -> left contraction
     """
     pass
+
+
 """
 A type variable for dimension agnostic functions
 """
@@ -538,14 +590,20 @@ Geo = TypeVar('Geo', Geo3d, Geo2d)
 
 # this implementation follows Course notes Geometric Algebra for Computer Graphics SIGGRAPH 2019 Charles G. Gunn, Ph. D.
 _I_3d = Geo3d.e(*range(Geo3d._dim))
+
+
 def _sqrt_dual(D: Geo3d) -> Geo3d:
     sqrt_s = math.sqrt(D._data[0])
     return sqrt_s + _I_3d*D._data[-1]/(2*sqrt_s)
+
+
 def _inv_dual(D: Geo3d) -> Geo3d:
-    m = Geo3d(data = D._data)
+    m = Geo3d(data=D._data)
     m._data[-1] *= -1
     m._data /= m._data[0]*m._data[0]
     return m
+
+
 def _split(B: Geo3d) -> tuple[float, float, Geo3d]:
     BB = -B*B
     if BB.almost_eq(0):
@@ -555,9 +613,13 @@ def _split(B: Geo3d) -> tuple[float, float, Geo3d]:
     B_norm = _sqrt_dual(-B*B)
     B_normalized = _inv_dual(B_norm) * B
     return B_norm._data[0], B_norm._data[-1], B_normalized
+
+
 def _exp_3d(B: Geo3d) -> Geo3d:
     u, v, B_ = _split(B)
     return (math.cos(u) + math.sin(u)*B_)*(1 + v*_I_3d*B_)
+
+
 def _log_3d(m: Geo3d) -> Geo3d:
     """
     takes a logarithm of an even versor
@@ -565,7 +627,7 @@ def _log_3d(m: Geo3d) -> Geo3d:
     """
     s1 = m._data[0]
     p1 = m._data[-1]
-    m2 = Geo3d(data = m._data)
+    m2 = Geo3d(data=m._data)
     m2._data[0] = 0
     m2._data[-1] = 0
     s2, p2, m_ = _split(m2)
@@ -577,7 +639,8 @@ def _log_3d(m: Geo3d) -> Geo3d:
         v = -p1/s2
     return (u + v*_I_3d)*m_
 
-def _exp_2d(B : Geo2d) -> Geo2d:
+
+def _exp_2d(B: Geo2d) -> Geo2d:
     BB = (B*B)._data[0]
     if abs(BB - 0) < 1e-10:
         return 1 + B
@@ -586,9 +649,11 @@ def _exp_2d(B : Geo2d) -> Geo2d:
         return math.cos(B_norm) + B*(math.sin(B_norm)/B_norm)
     else:
         assert False, 'B*B > 0 cannot occur in PGA'
-def _log_2d(m : Geo2d) -> Geo2d:
+
+
+def _log_2d(m: Geo2d) -> Geo2d:
     s = m._data[0]
-    B = Geo2d(data = m._data)
+    B = Geo2d(data=m._data)
     B._data[0] = 0
     BB = (B*B)._data[0]
     if abs(BB - 0) < 1e-10:
@@ -600,7 +665,8 @@ def _log_2d(m : Geo2d) -> Geo2d:
         return B*(angle/B_norm)
     else:
         assert False, "in 2d PGA bivectors can't square to a number greater than one"
-    
+
+
 def exp(m: Geo) -> Geo:
     """
     The exponential function generalized to bivectors
@@ -616,11 +682,14 @@ def exp(m: Geo) -> Geo:
     if not m.grade() in (2, None):
         raise ValueError('exp only supports bivectors')
     if isinstance(m, Geo2d):
-        return _exp_2d(m) # type: ignore # for some reason mypy thinks Geo = Geo3d, I'm not sure why. The asymmetric behaviour makes me think that it might be a bug in mypy but maybe I'm missing something
+        # type: ignore # for some reason mypy thinks Geo = Geo3d, I'm not sure why. The asymmetric behaviour makes me think that it might be a bug in mypy but maybe I'm missing something
+        return _exp_2d(m)
     elif isinstance(m, Geo3d):
         return _exp_3d(m)
     else:
         raise ValueError('only Geo2d and Geo3d are supported')
+
+
 def log(m: Geo) -> Geo:
     """
     Takes the logarithm of a versor
@@ -629,7 +698,7 @@ def log(m: Geo) -> Geo:
     Returns a bivector (that doesn't have to be a 2-blade)
     """
     if isinstance(m, Geo2d):
-        return _log_2d(m) # type: ignore # same reason as in exp()
+        return _log_2d(m)  # type: ignore # same reason as in exp()
     elif isinstance(m, Geo3d):
         return _log_3d(m)
     else:
@@ -639,9 +708,13 @@ def log(m: Geo) -> Geo:
 @overload
 def _coords(P: Geo2d) -> tuple[float, float]:
     ...
+
+
 @overload
 def _coords(P: Geo3d) -> tuple[float, float, float]:
     ...
+
+
 def _coords(P: Geo2d | Geo3d) -> tuple[float, float] | tuple[float, float, float]:
     p = P.undual()
     s = p._data[1 << 0]
@@ -650,6 +723,7 @@ def _coords(P: Geo2d | Geo3d) -> tuple[float, float] | tuple[float, float, float
     if isinstance(P, Geo2d):
         return p._data[1 << 1]/s, p._data[1 << 2]/s
     return p._data[1 << 1]/s, p._data[1 << 2]/s, p._data[1 << 3]/s
+
 
 def _2_points_on_a_line(l: Geo) -> tuple[Geo, Geo]:
     l = l.normalize()
@@ -660,7 +734,11 @@ def _2_points_on_a_line(l: Geo) -> tuple[Geo, Geo]:
     M = exp(-dist*l*l.I)
     b = M * mid / M
     return a, b
-_PLANE_RANGE : Final = 3
+
+
+_PLANE_RANGE: Final = 3
+
+
 def _4_points_on_a_plane(m: Geo3d) -> tuple[Geo3d, Geo3d, Geo3d, Geo3d]:
     e0, e1, e2, e3 = Geo3d.BASIS_VECTORS
     l1, l2, l3 = (abs((m | e)._data[0]) for e in (e1, e2, e3))
@@ -680,17 +758,20 @@ def _4_points_on_a_plane(m: Geo3d) -> tuple[Geo3d, Geo3d, Geo3d, Geo3d]:
             max1 ^ max2 ^ m,
             max1 ^ min2 ^ m)
 
+
 class Figure2d:
     """
     Collects points, lines, etc. and plots them with matplotlib
     """
-    _points : list[tuple[float, float, str | None]]
-    _lines : list[tuple[tuple[float, float], tuple[float, float], str | None]]
-    _polys : list[list[tuple[float, float]]]
+    _points: list[tuple[float, float, str | None]]
+    _lines: list[tuple[tuple[float, float], tuple[float, float], str | None]]
+    _polys: list[list[tuple[float, float]]]
+
     def __init__(self) -> None:
         self._points = []
         self._lines = []
         self._polys = []
+
     def draw(self, m: Geo2d | list[Geo2d], label: str | None = None) -> None:
         """
         Supports:
@@ -714,6 +795,7 @@ class Figure2d:
             self._lines.append(((x1, x2), (y1, y2), label))
         else:
             raise ValueError(f"error: don't know how to draw {m}")
+
     def show(self) -> None:
         """
         Uses matplotlib to show the fugure
@@ -734,30 +816,35 @@ class Figure2d:
                 x = sum(xs)/2
                 y = sum(ys)/2
                 ax.annotate(label,
-                    xy=(x, y), xycoords='data',
-                    xytext=(4, 4), textcoords='offset points')
+                            xy=(x, y), xycoords='data',
+                            xytext=(4, 4), textcoords='offset points')
         for x, y, label in self._points:
             ax.plot(x, y, 'ro')
             if label is not None:
                 # plt.annotate(label, xy=(x, y))
                 ax.annotate(label,
-                        xy=(x, y), xycoords='data',
-                        xytext=(4, 4), textcoords='offset points')
+                            xy=(x, y), xycoords='data',
+                            xytext=(4, 4), textcoords='offset points')
         fig.show()
 
 
-_COLORS = tuple(colors.BASE_COLORS.values()) 
+_COLORS = tuple(colors.BASE_COLORS.values())
+
+
 class Figure3d:
     """
     Collects points, lines, etc. and plots them with matplotlib
     """
-    _points : list[tuple[float, float, float, str | None]] = []
-    _lines : list[tuple[tuple[float, float], tuple[float, float], tuple[float, float]]] = []
-    _polys : list[list[tuple[float, float, float]]] = []
+    _points: list[tuple[float, float, float, str | None]] = []
+    _lines: list[tuple[tuple[float, float],
+                       tuple[float, float], tuple[float, float]]] = []
+    _polys: list[list[tuple[float, float, float]]] = []
+
     def __init__(self) -> None:
         self._points = []
         self._lines = []
         self._polys = []
+
     def draw(self, m: list[Geo3d] | Geo3d, label: str | None = None) -> None:
         """
         Supports:
@@ -780,7 +867,7 @@ class Figure3d:
             x2, y2, z2 = _coords(B)
             self._lines.append(((x1, x2), (y1, y2), (z1, z2)))
         elif g == 1:
-            points = [_coords(A) for A in  _4_points_on_a_plane(m)]
+            points = [_coords(A) for A in _4_points_on_a_plane(m)]
             self._polys.append(points)
         else:
             print(f"don't know how to draw {m}")
@@ -793,7 +880,8 @@ class Figure3d:
         ax = fig.add_subplot(projection='3d')
         ax.set_xlim(-_PLANE_RANGE, _PLANE_RANGE)
         ax.set_ylim(-_PLANE_RANGE, _PLANE_RANGE)
-        ax.set_zlim(-_PLANE_RANGE, _PLANE_RANGE) # type: ignore # there's probably a missing annotation in matplotlib
+        # type: ignore # there's probably a missing annotation in matplotlib
+        ax.set_zlim(-_PLANE_RANGE, _PLANE_RANGE)
         x = [p[0] for p in self._points]
         y = [p[1] for p in self._points]
         z = [p[2] for p in self._points]
@@ -804,15 +892,19 @@ class Figure3d:
             points2 = [[list(elem) for elem in points]]
             tmp = Poly3DCollection(points2, alpha=.5)
             tmp.set_color(_COLORS[i % len(_COLORS)])
-            ax.add_collection3d(tmp) # type: ignore # there's probably a missing annotation in matplotlib
+            # type: ignore # there's probably a missing annotation in matplotlib
+            ax.add_collection3d(tmp)
         fig.show()
 
-_figure : None | Figure2d | Figure3d = None
+
+_figure: None | Figure2d | Figure3d = None
+
+
 def draw(m: list[Geo], label: str | None = None) -> None:
     """
     Draws a geometric element onto a (global) figure
     to show the figure, call show()
-    
+
     Infers if the figure should be 2D or 3D based on
     the elements passed to it (mixing 2D and 3D is not allowed)
 
@@ -833,12 +925,15 @@ def draw(m: list[Geo], label: str | None = None) -> None:
     match m[0] if islist else m, _figure:
         case Geo2d(), Figure2d() | None:
             _figure = _figure or Figure2d()
-            _figure.draw(m, label) # type: ignore # Am I doing something wrong or is mypy this bad at working with type variables constrained to a particular type? i'd expect the match to generate a Geo = Geo2d constraint, but it seem that mypy only supports that kind of thing for variables
+            _figure.draw(m, label)  # type: ignore # Am I doing something wrong or is mypy this bad at working with type variables constrained to a particular type? i'd expect the match to generate a Geo = Geo2d constraint, but it seem that mypy only supports that kind of thing for variables
         case Geo3d(), Figure3d() | None:
             _figure = _figure or Figure3d()
-            _figure.draw(m, label) # type: ignore # if I used overloads instead of type vars, mypy could probably handle this — which raises the question: why does it treat overloads and type vars with constraints on them differently?
+            # type: ignore # if I used overloads instead of type vars, mypy could probably handle this — which raises the question: why does it treat overloads and type vars with constraints on them differently?
+            _figure.draw(m, label)
         case _:
             raise ValueError('cannot mix 2D and 3D')
+
+
 def show() -> None:
     """
     Uses matplotlib to show the (global) figure that draw() draws on
@@ -849,4 +944,3 @@ def show() -> None:
         raise ValueError('cannot show anything because draw() was not called')
     _figure.show()
     _figure = None
-# - references

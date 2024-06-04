@@ -11,4 +11,5 @@ e3 = e(3)
 I = Geo3d.I
 O = Geo3d.O
 
-__all__ = ['O', 'I', 'e0', 'e1', 'e2', 'e3', 'e', 'Geo3d', 'exp', 'log', 'draw', 'show']
+__all__ = ['O', 'I', 'e0', 'e1', 'e2', 'e3',
+           'e', 'Geo3d', 'exp', 'log', 'draw', 'show']
